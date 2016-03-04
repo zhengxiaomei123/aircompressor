@@ -13,13 +13,16 @@
  */
 package io.airlift.compress.lz4;
 
+import io.airlift.compress.memory.Memory;
 import sun.misc.Unsafe;
 
 import java.lang.reflect.Field;
 
+import static io.airlift.compress.memory.MemoryFactory.createDefaultMemoryInstance;
+
 final class UnsafeUtil
 {
-    public static final Unsafe UNSAFE;
+    static final Memory UNSAFE;
 
     private UnsafeUtil() {}
 
@@ -27,10 +30,12 @@ final class UnsafeUtil
         try {
             Field theUnsafe = Unsafe.class.getDeclaredField("theUnsafe");
             theUnsafe.setAccessible(true);
-            UNSAFE = (Unsafe) theUnsafe.get(null);
+            Unsafe unsafe = (Unsafe) theUnsafe.get(null);
+
+            UNSAFE = createDefaultMemoryInstance(unsafe);
         }
         catch (Exception e) {
-            throw new RuntimeException(e);
+            throw new ExceptionInInitializerError(e);
         }
     }
 }
