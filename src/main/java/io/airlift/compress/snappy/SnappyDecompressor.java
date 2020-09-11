@@ -17,6 +17,7 @@ import io.airlift.compress.Decompressor;
 import io.airlift.compress.MalformedInputException;
 
 import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 
 import static io.airlift.compress.snappy.UnsafeUtil.getAddress;
 import static sun.misc.Unsafe.ARRAY_BYTE_BASE_OFFSET;
@@ -29,7 +30,13 @@ public class SnappyDecompressor
         long compressedAddress = ARRAY_BYTE_BASE_OFFSET + compressedOffset;
         long compressedLimit = ARRAY_BYTE_BASE_OFFSET + compressed.length;
 
-        return SnappyRawDecompressor.getUncompressedLength(compressed, compressedAddress, compressedLimit);
+        ByteOrder order = ByteOrder.nativeOrder();
+        if (order.equals(ByteOrder.LITTLE_ENDIAN)) {
+            return SnappyRawDecompressor.getUncompressedLength(compressed, compressedAddress, compressedLimit);
+        }
+        else {
+            return SnappyRawDecompressorBE.getUncompressedLength(compressed, compressedAddress, compressedLimit);
+        }
     }
 
     @Override
@@ -41,7 +48,13 @@ public class SnappyDecompressor
         long outputAddress = ARRAY_BYTE_BASE_OFFSET + outputOffset;
         long outputLimit = outputAddress + maxOutputLength;
 
-        return SnappyRawDecompressor.decompress(input, inputAddress, inputLimit, output, outputAddress, outputLimit);
+        ByteOrder order = ByteOrder.nativeOrder();
+        if (order.equals(ByteOrder.LITTLE_ENDIAN)) {
+            return SnappyRawDecompressor.decompress(input, inputAddress, inputLimit, output, outputAddress, outputLimit);
+        }
+        else {
+            return SnappyRawDecompressorBE.decompress(input, inputAddress, inputLimit, output, outputAddress, outputLimit);
+        }
     }
 
     @Override
@@ -90,8 +103,15 @@ public class SnappyDecompressor
         // collected in a block, and technically, the JVM is allowed to eliminate these locks.
         synchronized (input) {
             synchronized (output) {
-                int written = SnappyRawDecompressor.decompress(inputBase, inputAddress, inputLimit, outputBase, outputAddress, outputLimit);
-                output.position(output.position() + written);
+                ByteOrder order = ByteOrder.nativeOrder();
+                if (order.equals(ByteOrder.LITTLE_ENDIAN)) {
+                    int written = SnappyRawDecompressor.decompress(inputBase, inputAddress, inputLimit, outputBase, outputAddress, outputLimit);
+                    output.position(output.position() + written);
+                }
+                else {
+                    int written = SnappyRawDecompressorBE.decompress(inputBase, inputAddress, inputLimit, outputBase, outputAddress, outputLimit);
+                    output.position(output.position() + written);
+                }
             }
         }
     }
